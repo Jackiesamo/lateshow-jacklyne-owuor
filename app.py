@@ -13,3 +13,22 @@ def get_episodes():
 def get_episode_by_id(id):
     episode = Episode.query.get(id)
 
+    if not episode:
+        return jsonify({"error": "Episode not found"}), 404
+
+    return jsonify({
+        "id": episode.id,
+        "date": episode.date,
+        "number": episode.number,
+        "appearances": [
+            {
+                "id": a.id,
+                "rating": a.rating,
+                "episode_id": a.episode_id,
+                "guest_id": a.guest_id,
+                "guest": a.guest.to_dict()
+            }
+            for a in episode.appearances
+        ]
+    }), 200
+
