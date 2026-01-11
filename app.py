@@ -32,3 +32,8 @@ def get_episode_by_id(id):
         ]
     }), 200
 
+@app.route('/guests', methods=['GET'])
+def get_guests():
+    guests = Guest.query.all()
+    return jsonify([g.to_dict() for g in guests]), 200
+
