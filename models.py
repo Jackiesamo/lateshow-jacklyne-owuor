@@ -42,3 +42,17 @@ class Guest(db.Model):
             "name": self.name,
             "occupation": self.occupation
         }
+    
+class Appearance(db.Model):
+    __tablename__ = 'appearances'
+
+    id = db.Column(db.Integer, primary_key=True)
+    rating = db.Column(db.Integer)
+
+    episode_id = db.Column(db.Integer, db.ForeignKey('episodes.id'))
+    guest_id = db.Column(db.Integer, db.ForeignKey('guests.id'))
+
+    episode = db.relationship('Episode', back_populates='appearances')
+    guest = db.relationship('Guest', back_populates='appearances')
+
+    
