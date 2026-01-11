@@ -15,3 +15,10 @@ class Episode(db.Model):
         back_populates='episode',
         cascade='all, delete-orphan'
     )
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "date": self.date,
+            "number": self.number
+        }
