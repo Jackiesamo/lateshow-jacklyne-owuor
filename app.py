@@ -3,3 +3,8 @@ from config import create_app
 from models import db, Episode, Guest, Appearance
 
 app = create_app()
+
+@app.route('/episodes', methods=['GET'])
+def get_episodes():
+    episodes = Episode.query.all()
+    return jsonify([e.to_dict() for e in episodes]), 200
