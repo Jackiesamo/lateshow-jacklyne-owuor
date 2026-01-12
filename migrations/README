@@ -1,1 +1,43 @@
-Single-database configuration for Flask.
+# Late Show API
+
+A Flask REST API for managing Late Show episodes, guests, and appearances.
+
+---
+
+## Models
+- Episode
+- Guest
+- Appearance
+
+---
+
+## Relationships
+- An Episode has many Guests through Appearances
+- A Guest has many Episodes through Appearances
+
+---
+
+## Validations
+- Appearance rating must be between **1 and 5**
+
+---
+
+## Routes
+
+| Method | Endpoint | Description |
+|------|---------|-------------|
+| GET | /episodes | List all episodes |
+| GET | /episodes/<id> | Get episode details with appearances |
+| GET | /guests | List all guests |
+| POST | /appearances | Create a new appearance |
+
+---
+
+## Setup Instructions
+
+### 1. Install dependencies
+```bash
+pipenv install
+pipenv shell
+
+

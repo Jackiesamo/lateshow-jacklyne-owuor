@@ -1,70 +1,120 @@
-from flask import request, jsonify
-from config import create_app
+
+from flask import Flask, jsonify, request
+from flask_sqlalchemy import SQLAlchemy
+from flask_migrate import Migrate
 from models import db, Episode, Guest, Appearance
 
-app = create_app()
+app = Flask(__name__)
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///lateshow.db'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-@app.route('/episodes', methods=['GET'])
-def get_episodes():
-    episodes = Episode.query.all()
-    return jsonify([e.to_dict() for e in episodes]), 200
+db.init_app(app)
+migrate = Migrate(app, db)
 
-@app.route('/episodes/<int:id>', methods=['GET'])
-def get_episode_by_id(id):
-    episode = Episode.query.get(id)
 
-    if not episode:
-        return jsonify({"error": "Episode not found"}), 404
+# SERIALIZE FUNCTIONS
 
-    return jsonify({
+
+def episode_to_dict(episode, include_appearances=False):
+    data = {
         "id": episode.id,
         "date": episode.date,
-        "number": episode.number,
-        "appearances": [
+        "number": episode.number
+    }
+    if include_appearances:
+        data["appearances"] = [
             {
                 "id": a.id,
                 "rating": a.rating,
-                "episode_id": a.episode_id,
-                "guest_id": a.guest_id,
-                "guest": a.guest.to_dict()
-            }
-            for a in episode.appearances
+                "guest_id": a.guest.id,
+                "episode_id": a.episode.id,
+                "guest": {
+                    "id": a.guest.id,
+                    "name": a.guest.name,
+                    "occupation": a.guest.occupation
+                }
+            } for a in episode.appearances
         ]
-    }), 200
+    return data
 
+def guest_to_dict(guest):
+    return {
+        "id": guest.id,
+        "name": guest.name,
+        "occupation": guest.occupation
+    }
+
+def appearance_to_dict(appearance):
+    return {
+        "id": appearance.id,
+        "rating": appearance.rating,
+        "episode_id": appearance.episode.id,
+        "guest_id": appearance.guest.id,
+        "episode": {
+            "id": appearance.episode.id,
+            "date": appearance.episode.date,
+            "number": appearance.episode.number
+        },
+        "guest": {
+            "id": appearance.guest.id,
+            "name": appearance.guest.name,
+            "occupation": appearance.guest.occupation
+        }
+    }
+
+
+# ROUTES
+
+
+# GET /episodes
+@app.route('/episodes', methods=['GET'])
+def get_episodes():
+    episodes = Episode.query.all()
+    return jsonify([episode_to_dict(e) for e in episodes]), 200
+
+# GET /episodes/:id
+@app.route('/episodes/<int:id>', methods=['GET'])
+def get_episode(id):
+    episode = Episode.query.get(id)
+    if not episode:
+        return jsonify({"error": "Episode not found"}), 404
+    return jsonify(episode_to_dict(episode, include_appearances=True)), 200
+
+# GET /guests
 @app.route('/guests', methods=['GET'])
 def get_guests():
     guests = Guest.query.all()
-    return jsonify([g.to_dict() for g in guests]), 200
+    return jsonify([guest_to_dict(g) for g in guests]), 200
 
-
+# POST /appearances
 @app.route('/appearances', methods=['POST'])
 def create_appearance():
-    try:
-        data = request.get_json()
+    data = request.get_json()
+    rating = data.get("rating")
+    episode_id = data.get("episode_id")
+    guest_id = data.get("guest_id")
 
-        appearance = Appearance(
-            rating=data['rating'],
-            episode_id=data['episode_id'],
-            guest_id=data['guest_id']
-        )
+    # Validate
+    errors = []
+    if not rating or not isinstance(rating, int) or not (1 <= rating <= 5):
+        errors.append("rating must be between 1 and 5")
+    if not episode_id or not Episode.query.get(episode_id):
+        errors.append("episode_id must exist")
+    if not guest_id or not Guest.query.get(guest_id):
+        errors.append("guest_id must exist")
 
-        db.session.add(appearance)
-        db.session.commit()
+    if errors:
+        return jsonify({"errors": errors}), 400
 
-        return jsonify({
-            "id": appearance.id,
-            "rating": appearance.rating,
-            "episode_id": appearance.episode_id,
-            "guest_id": appearance.guest_id,
-            "episode": appearance.episode.to_dict(),
-            "guest": appearance.guest.to_dict()
-        }), 201
+    # Create appearance
+    appearance = Appearance(rating=rating,
+                            episode_id=episode_id,
+                            guest_id=guest_id)
+    db.session.add(appearance)
+    db.session.commit()
+    return jsonify(appearance_to_dict(appearance)), 201
 
-    except Exception as e:
-        return jsonify({"errors": [str(e)]}), 400
 
 
 if __name__ == '__main__':
-    app.run(port=5555, debug=True)
-
+    app.run(debug=True)
